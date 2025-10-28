@@ -2,7 +2,8 @@ FROM python:3.12-slim
 
 ENV POETRY_VERSION=1.8.3 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
