@@ -28,7 +28,7 @@ services:
       db:
         condition: service_healthy
     env_file: .env
-    # ⚠️ Don't bind-mount ./backend in prod; it overrides the image.
+    # Persist uploads (attachments)
     volumes:
       - app-media:/app/app/media
     command:
@@ -36,8 +36,12 @@ services:
       - -lc
       - >
         python -m app.prestart &&
-        (alembic upgrade head ||
-         (alembic revision --autogenerate -m "init" && alembic upgrade head)) &&
+        mkdir -p alembic/versions &&
+        if [ -z "$(ls -A alembic/versions 2>/dev/null)" ]; then
+          echo "No Alembic revisions found; generating initial revision..." &&
+          alembic revision --autogenerate -m "init";
+        fi &&
+        alembic upgrade head &&
         if [ "$$SEED_DEMO" = "1" ]; then python -m app.scripts.seed || true; fi &&
         uvicorn app.main:app --host ${API_HOST} --port ${API_PORT} --log-level ${API_LOG_LEVEL}
     ports:
