@@ -4,7 +4,10 @@ WORKDIR /app
 # Build context is ./frontend — copy files directly
 COPY package.json pnpm-lock.yaml* ./
 RUN corepack enable && corepack prepare pnpm@9.7.1 --activate
-RUN pnpm install --frozen-lockfile
+
+# Lockfile in repo may not match; allow pnpm to resolve fresh
+RUN pnpm install --no-frozen-lockfile
+
 COPY . .
 RUN pnpm build
 
