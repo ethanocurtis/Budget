@@ -1,7 +1,7 @@
 FROM node:20-slim AS build
 WORKDIR /app
 
-# 👇 build context is ./frontend
+# Build context is ./frontend — copy files directly
 COPY package.json pnpm-lock.yaml* ./
 RUN corepack enable && corepack prepare pnpm@9.7.1 --activate
 RUN pnpm install --frozen-lockfile
