@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   db:
     image: postgres:16
@@ -19,33 +20,47 @@ services:
       - "5432:5432"
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     env_file: .env
+    # ⚠️ Don't bind-mount ./backend in prod; it overrides the image.
     volumes:
       - app-media:/app/app/media
-      - ./backend:/app
-    command: [ "bash", "-lc", "python -m app.prestart && alembic upgrade head && uvicorn app.main:app --host ${API_HOST} --port ${API_PORT} --log-level ${API_LOG_LEVEL}" ]
+    command:
+      - bash
+      - -lc
+      - >
+        python -m app.prestart &&
+        (alembic upgrade head ||
+         (alembic revision --autogenerate -m "init" && alembic upgrade head)) &&
+        if [ "$$SEED_DEMO" = "1" ]; then python -m app.scripts.seed || true; fi &&
+        uvicorn app.main:app --host ${API_HOST} --port ${API_PORT} --log-level ${API_LOG_LEVEL}
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 10
 
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
     depends_on:
       api:
         condition: service_healthy
     env_file: .env
     ports:
-      - "${WEB_PORT}:8080"
+      - "${WEB_PORT:-8080}:8080"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/"]
       interval: 10s
       timeout: 5s
       retries: 10
