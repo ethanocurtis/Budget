@@ -1,19 +1,21 @@
+# ---- build stage ----
 FROM node:20-slim AS build
 WORKDIR /app
 
-# Build context is ./frontend — copy files directly
+# Build context is ./frontend
 COPY package.json pnpm-lock.yaml* ./
 RUN corepack enable && corepack prepare pnpm@9.7.1 --activate
-
-# Lockfile in repo may not match; allow pnpm to resolve fresh
+# lockfile may not match; allow resolver to update as needed
 RUN pnpm install --no-frozen-lockfile
 
 COPY . .
 RUN pnpm build
 
-FROM node:20-slim AS serve
-WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9.7.1 --activate
-COPY --from=build /app/dist ./dist
+# ---- serve stage (nginx) ----
+FROM nginx:alpine AS serve
+# Listen on 8080 so docker-compose mapping stays the same
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
 EXPOSE 8080
-CMD ["pnpm", "exec", "vite", "preview", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["nginx", "-g", "daemon off;"]
